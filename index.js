@@ -3,8 +3,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. CONFIGURATION & STATE
     // =========================================================================
     
-    const STORAGE_KEY = 'trinh_hg_settings_v29_final';
-    const INPUT_STATE_KEY = 'trinh_hg_input_v29';
+    const STORAGE_KEY = 'trinh_hg_settings_v30_final';
+    const INPUT_STATE_KEY = 'trinh_hg_input_v30';
   
     // MARKERS
     const MARK_REP_START  = '\uE000'; 
@@ -22,19 +22,14 @@ document.addEventListener('DOMContentLoaded', () => {
       regexMode: 'chapter',
       customRegex: '',
       modes: {
-        default: { 
-            pairs: [], 
-            matchCase: false, 
-            wholeWord: false, 
-            autoCaps: false
-        }
+        default: { pairs: [], matchCase: false, wholeWord: false, autoCaps: false }
       }
     };
   
     let state = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultState;
     if (!state.activeTab) state.activeTab = 'settings';
     
-    // Đảm bảo cấu trúc dữ liệu
+    // Validate State
     if (state.dialogueMode === undefined) state.dialogueMode = 0;
     if (state.abnormalCapsMode === undefined) state.abnormalCapsMode = 0;
     if (!state.modes || Object.keys(state.modes).length === 0) {
@@ -46,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSplitMode = 2;
     let saveTimeout;
 
-    // ANTI-FLICKER LOGIC (Xóa class loading để hiện giao diện)
+    // ANTI-FLICKER
     document.body.classList.remove('loading');
     document.querySelectorAll('.tab-button').forEach(b => {
         b.classList.toggle('active', b.dataset.tab === state.activeTab);
@@ -64,26 +59,28 @@ document.addEventListener('DOMContentLoaded', () => {
       settingPanels: document.querySelectorAll('.setting-panel'),
       modeSelect: document.getElementById('mode-select'),
       list: document.getElementById('punctuation-list'),
-      
-      // *** ĐÃ FIX: Thêm dòng này để tránh lỗi undefined ***
       emptyState: document.getElementById('empty-state'), 
       
-      // Toolbar
+      // Toolbar buttons
       matchCaseBtn: document.getElementById('match-case'),
       wholeWordBtn: document.getElementById('whole-word'),
       autoCapsBtn: document.getElementById('auto-caps'), 
       
-      formatCards: document.querySelectorAll('.format-card:not(.ab-caps-card)'),
+      // Format cards
+      formatCards: document.querySelectorAll('.format-card:not(.ab-caps-card):not(.regex-card)'),
       abCapsCards: document.querySelectorAll('.ab-caps-card'),
+      regexCards: document.querySelectorAll('.regex-card'),
       
       customRegexInput: document.getElementById('custom-regex-input'),
       saveRegexBtn: document.getElementById('save-regex-settings'),
       
+      // Replace Tab
       inputText: document.getElementById('input-text'),
       outputText: document.getElementById('output-text'),
       replaceBtn: document.getElementById('replace-button'),
       copyBtn: document.getElementById('copy-button'),
       
+      // Split Tab
       splitInput: document.getElementById('split-input-text'),
       splitWrapper: document.getElementById('split-outputs-wrapper'),
       splitTypeRadios: document.getElementsByName('split-type'),
@@ -91,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
       splitControlRegex: document.getElementById('split-type-regex'),
       splitActionBtn: document.getElementById('split-action-btn'),
       
+      // Badges
       inputCount: document.getElementById('input-word-count'),
       outputCount: document.getElementById('output-word-count'),
       replaceCountBadge: document.getElementById('count-replace'),
@@ -99,12 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // =========================================================================
-    // 3. LOGIC XỬ LÝ TEXT (CORE)
+    // 3. LOGIC CORE
     // =========================================================================
     
-    function saveState() { 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
-    }
+    function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
     
     function showNotification(msg, type = 'success') {
       const container = document.getElementById('notification-container');
@@ -146,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // MAIN PIPELINE
+    // MAIN REPLACE
     function performReplaceAll() {
         const rawText = els.inputText.value;
         if (!rawText) { showInlineNotify(els.replaceBtn, "Chưa có nội dung!"); return; }
@@ -158,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let countReplace = 0;
                 let countCaps = 0;
 
-                // 1. USER REPLACEMENTS
+                // 1. Pairs
                 if (mode.pairs && mode.pairs.length > 0) {
                     const rules = mode.pairs
                         .filter(p => p.find && p.find !== '')
@@ -188,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                // 2. ABNORMAL CAPS
+                // 2. Abnormal Caps
                 if (state.abnormalCapsMode > 0) {
                     const abnormalRegex = /(?<=[\p{Ll},;]\s+)([\p{Lu}][\p{Ll}]+)(?!\s+[\p{Lu}])(?=\s+[\p{Ll}\p{P}]|[\p{P}])/gum;
                     
@@ -202,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // 3. AUTO CAPS
+                // 3. Auto Caps
                 if (mode.autoCaps) {
                     const autoCapsRegex = /(?:(^)|([.?!]|\.\.\.)\s+|:\s*["“]\s*)(?:(\uE000.*?\uE001)|([\p{Ll}]))/gmu;
                     processedText = processedText.replace(autoCapsRegex, (match, startLine, punct, markGroup, lowerChar) => {
@@ -218,11 +214,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                // 4. FORMAT DIALOGUE & SPACING
+                // 4. Format & Spacing
                 processedText = formatDialogue(processedText, state.dialogueMode);
                 processedText = processedText.split(/\r?\n/).map(line => line.trim()).filter(line => line !== '').join('\n\n');
 
-                // 5. RENDER HTML
+                // 5. Render
                 let finalHTML = ''; let buffer = '';
                 for (let i = 0; i < processedText.length; i++) {
                     const c = processedText[i];
@@ -350,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // =========================================================================
-    // 5. UI & EVENTS
+    // 5. UI EVENTS
     // =========================================================================
     
     function renderModeSelect() {
@@ -374,8 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
       els.formatCards.forEach(card => card.classList.toggle('active', parseInt(card.dataset.format) === state.dialogueMode));
       els.abCapsCards.forEach(card => card.classList.toggle('active', parseInt(card.dataset.abCaps) === state.abnormalCapsMode));
       
-      const regexInput = document.querySelector(`input[name="regex-preset"][value="${state.regexMode}"]`);
-      if(regexInput) regexInput.checked = true;
+      // Update Regex Cards UI
+      els.regexCards.forEach(card => card.classList.toggle('active', card.dataset.regex === state.regexMode));
       els.customRegexInput.value = state.customRegex || '';
     }
   
@@ -404,58 +400,41 @@ document.addEventListener('DOMContentLoaded', () => {
             fragment.appendChild(item);
         });
         els.list.appendChild(fragment);
-        
-        // ĐÃ FIX: Giờ els.emptyState đã tồn tại, không còn lỗi undefined
-        if (els.emptyState) {
-            els.emptyState.classList.toggle('hidden', mode.pairs.length > 0);
-        }
+        if (els.emptyState) els.emptyState.classList.toggle('hidden', mode.pairs.length > 0);
     }
 
-    // CSV LOGIC
     function importCSV(file) {
         const reader = new FileReader();
         reader.onload = (e) => {
-            const text = e.target.result;
-            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            const lines = e.target.result.split(/\r?\n/).filter(l => l.trim());
             if(lines.length < 1) return;
-
-            const firstLine = lines[0];
-            const delimiter = firstLine.includes('\t') ? '\t' : ',';
+            const delimiter = lines[0].includes('\t') ? '\t' : ',';
             
             let count = 0;
             for(let i = 1; i < lines.length; i++) {
-                let cols;
-                if (delimiter === '\t') {
-                    cols = lines[i].split('\t').map(c => c.trim());
-                } else {
-                    // Xử lý CSV cơ bản (chấp nhận phẩy)
-                    cols = lines[i].split(',').map(c => c.trim()); 
-                }
-
+                let cols = lines[i].split(delimiter === '\t' ? '\t' : ',').map(c => c.trim()); 
                 if(cols.length >= 2) {
                     const find = cols[1];
                     const replace = cols[2] || '';
                     const modeName = cols[3] || 'default';
                     
                     if(find) {
-                        if(!state.modes[modeName]) {
-                             state.modes[modeName] = JSON.parse(JSON.stringify(defaultState.modes.default));
-                        }
+                        if(!state.modes[modeName]) state.modes[modeName] = JSON.parse(JSON.stringify(defaultState.modes.default));
                         state.modes[modeName].pairs.push({ find, replace });
                         count++;
                     }
                 }
             }
             saveState(); renderModeSelect(); renderList();
-            showNotification(`Đã nhập ${count} cặp từ!`);
+            showNotification(`Đã nhập ${count} cặp!`);
         };
         reader.readAsText(file);
     }
     
     function updateCounters() {
-      els.inputCount.textContent = countWords(els.inputText.value) + ' Words';
-      els.outputCount.textContent = countWords(els.outputText.innerText) + ' Words';
-      els.splitInputCount.textContent = countWords(els.splitInput.value) + ' Words';
+      els.inputCount.textContent = countWords(els.inputText.value) + ' W';
+      els.outputCount.textContent = countWords(els.outputText.innerText) + ' W';
+      els.splitInputCount.textContent = countWords(els.splitInput.value) + ' W';
     }
     function saveTempInput() { localStorage.setItem(INPUT_STATE_KEY, JSON.stringify({ inputText: els.inputText.value, splitInput: els.splitInput.value })); }
     function loadTempInput() {
@@ -479,9 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
       els.sidebarBtns.forEach(btn => btn.onclick = (e) => { e.preventDefault(); switchSidebar(btn.dataset.target); });
 
       const toggleHandler = (prop) => { 
-          const m = state.modes[state.currentMode]; 
-          m[prop] = !m[prop]; 
-          updateModeUI(); 
+          const m = state.modes[state.currentMode]; m[prop] = !m[prop]; updateModeUI(); 
       };
       els.matchCaseBtn.onclick = (e) => { e.preventDefault(); toggleHandler('matchCase'); };
       els.wholeWordBtn.onclick = (e) => { e.preventDefault(); toggleHandler('wholeWord'); };
@@ -507,7 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
           renderList(); 
           if(els.list.firstChild) els.list.firstChild.querySelector('.find').focus();
       };
-      document.getElementById('save-settings').onclick = (e) => { e.preventDefault(); saveState(); showNotification('Đã lưu cài đặt!'); };
+      document.getElementById('save-settings').onclick = (e) => { e.preventDefault(); saveState(); showNotification('Đã lưu!'); };
       document.getElementById('export-settings').onclick = (e) => { e.preventDefault(); /* Logic export cũ */ };
       document.getElementById('import-settings').onclick = (e) => { e.preventDefault(); const inp=document.createElement('input'); inp.type='file'; inp.accept='.csv'; inp.onchange=e=>{if(e.target.files.length) importCSV(e.target.files[0])}; inp.click(); };
       
@@ -520,7 +497,11 @@ document.addEventListener('DOMContentLoaded', () => {
       els.formatCards.forEach(card => card.onclick = () => { state.dialogueMode = parseInt(card.dataset.format); saveState(); updateModeUI(); });
       els.abCapsCards.forEach(card => card.onclick = () => { state.abnormalCapsMode = parseInt(card.dataset.abCaps); saveState(); updateModeUI(); });
       
-      els.saveRegexBtn.onclick = (e) => { e.preventDefault(); state.regexMode = document.querySelector('input[name="regex-preset"]:checked').value; state.customRegex = els.customRegexInput.value; saveState(); showInlineNotify(els.saveRegexBtn, "Đã Lưu!"); };
+      // REGEX CARD CLICK
+      els.regexCards.forEach(card => card.onclick = () => { 
+          state.regexMode = card.dataset.regex; saveState(); updateModeUI(); 
+      });
+      els.saveRegexBtn.onclick = (e) => { e.preventDefault(); state.customRegex = els.customRegexInput.value; saveState(); showInlineNotify(els.saveRegexBtn, "Đã Lưu Regex!"); };
 
       els.splitTypeRadios.forEach(r => r.addEventListener('change', updateSplitUI));
       document.querySelectorAll('.split-mode-btn').forEach(btn => btn.onclick = (e) => { 
