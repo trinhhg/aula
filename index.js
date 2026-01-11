@@ -45,6 +45,15 @@ document.addEventListener('DOMContentLoaded', () => {
   
     let currentSplitMode = 2;
     let saveTimeout;
+
+    // ANTI-FLICKER LOGIC (Xóa class loading để hiện giao diện)
+    document.body.classList.remove('loading');
+    document.querySelectorAll('.tab-button').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === state.activeTab);
+    });
+    document.querySelectorAll('.tab-content').forEach(c => {
+        c.classList.toggle('active', c.id === state.activeTab);
+    });
   
     // =========================================================================
     // 2. DOM ELEMENTS
@@ -55,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
       settingPanels: document.querySelectorAll('.setting-panel'),
       modeSelect: document.getElementById('mode-select'),
       list: document.getElementById('punctuation-list'),
+      
+      // *** ĐÃ FIX: Thêm dòng này để tránh lỗi undefined ***
+      emptyState: document.getElementById('empty-state'), 
       
       // Toolbar
       matchCaseBtn: document.getElementById('match-case'),
@@ -139,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const rawText = els.inputText.value;
         if (!rawText) { showInlineNotify(els.replaceBtn, "Chưa có nội dung!"); return; }
 
-        // Sử dụng requestAnimationFrame để tránh treo UI (fix delay/lag)
         requestAnimationFrame(() => {
             try {
                 let processedText = normalizeInput(rawText);
@@ -177,17 +188,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
 
-                // 2. ABNORMAL CAPS (Viết hoa bất thường)
+                // 2. ABNORMAL CAPS
                 if (state.abnormalCapsMode > 0) {
-                    // Regex: Bắt [Chữ Hoa đầu + thường sau] đứng sau [chữ thường + space]
                     const abnormalRegex = /(?<=[\p{Ll},;]\s+)([\p{Lu}][\p{Ll}]+)(?!\s+[\p{Lu}])(?=\s+[\p{Ll}\p{P}]|[\p{P}])/gum;
                     
                     if (state.abnormalCapsMode == 1) { 
-                        // Mode 1: Viết thường từ đó (Nội -> nội)
                         processedText = processedText.replace(abnormalRegex, (match, p1) => p1.toLowerCase());
                     } else if (state.abnormalCapsMode == 2) {
-                        // Mode 2: Viết hoa từ SAU đó (Nội các -> Nội Các)
-                        // Cần regex rộng hơn một chút để bắt từ phía sau
                         const mode2Regex = /(?<=[\p{Ll},;]\s+)([\p{Lu}][\p{Ll}]+)(\s+)([\p{Ll}]+)/gum;
                         processedText = processedText.replace(mode2Regex, (match, word1, space, word2) => {
                             return `${word1}${space}${word2.charAt(0).toUpperCase() + word2.slice(1)}`;
@@ -200,8 +207,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const autoCapsRegex = /(?:(^)|([.?!]|\.\.\.)\s+|:\s*["“]\s*)(?:(\uE000.*?\uE001)|([\p{Ll}]))/gmu;
                     processedText = processedText.replace(autoCapsRegex, (match, startLine, punct, markGroup, lowerChar) => {
                         if (markGroup) {
-                            // Nếu từ này đã được Replace trước đó, nó sẽ thành màu CAM (Replace + AutoCaps)
-                            // Ta cần đổi marker từ REP sang BOTH
                             return match.replace(MARK_REP_START, MARK_BOTH_START).replace(MARK_REP_END, MARK_BOTH_END);
                         }
                         if (lowerChar) {
@@ -215,7 +220,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 4. FORMAT DIALOGUE & SPACING
                 processedText = formatDialogue(processedText, state.dialogueMode);
-                // Fix lỗi format "liền 1 cục": Đảm bảo giữ dòng bằng cách join \n\n
                 processedText = processedText.split(/\r?\n/).map(line => line.trim()).filter(line => line !== '').join('\n\n');
 
                 // 5. RENDER HTML
@@ -257,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 1; i <= count; i++) {
              const div = document.createElement('div'); div.className = 'split-box';
              div.innerHTML = `
-                <div class="split-header"><span>Phần ${i}</span><span class="badge">0 Words</span></div>
+                <div class="split-header"><span>Phần ${i}</span><span class="badge green">0 Words</span></div>
                 <textarea id="out-split-${i-1}" class="custom-scrollbar" readonly placeholder="Kết quả..."></textarea>
                 <div class="split-footer"><button type="button" class="btn btn-success full-width copy-split-btn" data-target="out-split-${i-1}">Sao chép</button></div>
             `;
@@ -318,7 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
         }
         
-        // Render
         els.splitWrapper.innerHTML = '';
         parts.forEach((part, index) => {
             const div = document.createElement('div'); div.className = 'split-box';
@@ -379,7 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderList() {
         els.list.innerHTML = '';
         const mode = state.modes[state.currentMode];
-        // Fragment để tối ưu DOM update
         const fragment = document.createDocumentFragment();
         
         mode.pairs.forEach((p, realIndex) => {
@@ -390,7 +392,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input type="text" class="replace" placeholder="Thay thế" value="${(p.replace||'').replace(/"/g, '&quot;')}">
                 <button type="button" class="remove" tabindex="-1">×</button>
             `;
-            // Chỉ cập nhật vào memory state, KHÔNG gọi saveState()
             const inputs = item.querySelectorAll('input');
             inputs[0].oninput = (e) => { p.find = e.target.value; };
             inputs[1].oninput = (e) => { p.replace = e.target.value; };
@@ -398,13 +399,16 @@ document.addEventListener('DOMContentLoaded', () => {
             item.querySelector('.remove').onclick = (e) => { 
                 e.preventDefault();
                 mode.pairs.splice(realIndex, 1); 
-                // Xóa thì phải render lại
                 renderList(); 
             };
             fragment.appendChild(item);
         });
         els.list.appendChild(fragment);
-        els.emptyState.classList.toggle('hidden', mode.pairs.length > 0);
+        
+        // ĐÃ FIX: Giờ els.emptyState đã tồn tại, không còn lỗi undefined
+        if (els.emptyState) {
+            els.emptyState.classList.toggle('hidden', mode.pairs.length > 0);
+        }
     }
 
     // CSV LOGIC
@@ -415,23 +419,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const lines = text.split(/\r?\n/).filter(l => l.trim());
             if(lines.length < 1) return;
 
-            // Detect delimiter (Tab or Comma)
             const firstLine = lines[0];
             const delimiter = firstLine.includes('\t') ? '\t' : ',';
             
             let count = 0;
             for(let i = 1; i < lines.length; i++) {
-                // Split logic that respects quotes if comma separated, simple split if tab
                 let cols;
                 if (delimiter === '\t') {
                     cols = lines[i].split('\t').map(c => c.trim());
                 } else {
-                    // Simple comma split fallback (can be improved but robust enough for simple lists)
+                    // Xử lý CSV cơ bản (chấp nhận phẩy)
                     cols = lines[i].split(',').map(c => c.trim()); 
                 }
 
-                // Mapping: stt(0), find(1), replace(2), mode(3)
-                // Cần đảm bảo đủ cột
                 if(cols.length >= 2) {
                     const find = cols[1];
                     const replace = cols[2] || '';
@@ -481,10 +481,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const toggleHandler = (prop) => { 
           const m = state.modes[state.currentMode]; 
           m[prop] = !m[prop]; 
-          // Không saveState ngay ở đây nếu muốn strict "Lưu mới lưu", 
-          // nhưng logic toggle thường cần phản hồi ngay UI.
-          // Theo yêu cầu số 5: "Chỉnh sửa tab quản lý... ấn nút lưu mới lưu".
-          // Vậy ta chỉ update UI, không saveState vào localStorage.
           updateModeUI(); 
       };
       els.matchCaseBtn.onclick = (e) => { e.preventDefault(); toggleHandler('matchCase'); };
@@ -493,7 +489,6 @@ document.addEventListener('DOMContentLoaded', () => {
       
       els.modeSelect.onchange = (e) => { state.currentMode = e.target.value; renderList(); updateModeUI(); };
       
-      // Buttons
       document.getElementById('add-mode').onclick = (e) => { 
           e.preventDefault(); const n = prompt('Tên Mode mới:'); 
           if(n && !state.modes[n]) { state.modes[n] = { pairs: [], matchCase: false, wholeWord: false, autoCaps: false }; state.currentMode = n; saveState(); renderModeSelect(); renderList(); }
@@ -508,7 +503,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       document.getElementById('add-pair').onclick = (e) => { 
           e.preventDefault(); 
-          state.modes[state.currentMode].pairs.unshift({ find: '', replace: '' }); // Thêm lên đầu
+          state.modes[state.currentMode].pairs.unshift({ find: '', replace: '' }); 
           renderList(); 
           if(els.list.firstChild) els.list.firstChild.querySelector('.find').focus();
       };
