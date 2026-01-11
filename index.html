@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trịnh Hg - Tool V29</title>
+  <title>Trịnh Hg - Tool V30</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="index.css">
 </head>
@@ -100,7 +100,7 @@
             <div id="panel-abnormal-caps" class="setting-panel">
                 <div class="panel-header"><h2>Xử Lý Viết Hoa</h2></div>
                 <div class="format-container">
-                    <p class="format-desc big-desc">Xử lý từ viết hoa đơn lẻ giữa câu (VD: ...đến Nội các...).</p>
+                    <p class="format-desc big-desc">Xử lý từ viết hoa đơn lẻ giữa câu.</p>
                     <div class="format-options-grid">
                         <div class="format-card ab-caps-card active" data-ab-caps="0">
                             <div class="card-content"><h3>Giữ nguyên</h3><p class="big-desc">...đến Nội các...</p></div>
@@ -119,23 +119,26 @@
                 <div class="panel-header"><h2>Regex Chia Chương</h2></div>
                 <div class="format-container">
                     <p class="format-desc big-desc">Chọn mẫu nhận diện chương.</p>
-                    <div class="regex-option-row">
-                        <label class="regex-radio"><input type="radio" name="regex-preset" value="chapter" checked> <span>Chương (Chapter + Số)</span></label>
+                    <div class="format-options-grid">
+                        <div class="format-card regex-card active" data-regex="chapter">
+                            <div class="card-content"><h3>Chương</h3><p class="big-desc">Chapter 1, Chương 1...</p></div>
+                        </div>
+                        <div class="format-card regex-card" data-regex="book">
+                            <div class="card-content"><h3>Hồi / Quyển</h3><p class="big-desc">Hồi 1, Quyển I...</p></div>
+                        </div>
+                        <div class="format-card regex-card" data-regex="custom">
+                            <div class="card-content"><h3>Tự Chọn</h3><p class="big-desc">Nhập Regex riêng bên dưới.</p></div>
+                        </div>
                     </div>
-                    <div class="regex-option-row">
-                        <label class="regex-radio"><input type="radio" name="regex-preset" value="book"> <span>Hồi / Quyển</span></label>
-                    </div>
-                    <div class="regex-option-row">
-                        <label class="regex-radio"><input type="radio" name="regex-preset" value="custom"> <span>Tự Chọn</span></label>
-                        <input type="text" id="custom-regex-input" class="modern-input" placeholder="Ví dụ: ^(Part|Phần)\s+\d+">
-                    </div>
-                    <button id="save-regex-settings" class="btn btn-primary" style="margin-top:15px">Lưu Regex</button>
+                    
+                    <input type="text" id="custom-regex-input" class="modern-input" placeholder="Ví dụ regex: ^(Part|Phần)\s+\d+" style="margin-top:20px;">
+                    <button id="save-regex-settings" class="btn btn-primary big-btn" style="margin-top:10px">Lưu Regex</button>
                 </div>
             </div>
 
             <div id="panel-key-info" class="setting-panel">
                 <div class="panel-header"><h2>Thông Tin</h2></div>
-                <div class="format-container"><p>Trạng thái: Active (V29)</p></div>
+                <div class="format-container"><p>Trạng thái: Active (V30)</p></div>
             </div>
             
              <div id="panel-guide" class="setting-panel">
@@ -159,7 +162,7 @@
         <div class="pane input-pane">
           <div class="pane-header">
             <span>Văn bản gốc</span>
-            <span id="input-word-count" class="badge green">0 Words</span>
+            <span id="input-word-count" class="badge green">0 W</span>
           </div>
           <textarea id="input-text" class="custom-scrollbar" placeholder="Dán văn bản vào đây..."></textarea>
           <div class="pane-footer">
@@ -173,11 +176,8 @@
             <div class="counters-group">
                 <span id="count-replace" class="badge yellow">Replace: 0</span>
                 <span id="count-caps" class="badge blue">Auto-Caps: 0</span>
-                <span id="output-word-count" class="badge green">0 Words</span>
+                <div class="legend-inline"><span class="dot orange"></span>Replace+Caps</div>
             </div>
-          </div>
-          <div class="legend-note">
-              <span class="dot orange"></span>Replace + Auto Caps: Màu cam
           </div>
           <div id="output-text" class="custom-scrollbar output-div" contenteditable="false" data-placeholder="Kết quả..."></div>
           <div class="pane-footer">
@@ -216,7 +216,7 @@
         <div id="split-input-container" class="split-box input-box main-split-input">
           <div class="split-header">
             <span>Input Tổng</span>
-            <span id="split-input-word-count" class="badge green">0 Words</span>
+            <span id="split-input-word-count" class="badge green">0 W</span>
           </div>
           <textarea id="split-input-text" class="custom-scrollbar" placeholder="Dán cả bộ truyện vào đây..."></textarea>
           <div class="split-footer">
